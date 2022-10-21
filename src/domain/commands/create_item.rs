@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
 use uuid::Uuid;
 
 use super::Command;
-use crate::domain::{entities::Item, repositories::ItemRepository};
+use crate::domain::{
+    entities::Item,
+    repositories::{ItemRepository, ItemRepositoryError},
+};
 
 #[derive(Debug, PartialEq)]
 pub struct CreateItem {
@@ -30,18 +35,18 @@ impl CreateItem {
 }
 
 pub struct CreateItemHandler {
-    item_repo: Box<dyn ItemRepository + Send + Sync + 'static>,
+    item_repo: Arc<dyn ItemRepository + Send + Sync>,
 }
 
 impl CreateItemHandler {
-    pub fn new(item_repo: Box<dyn ItemRepository + Send + Sync + 'static>) -> CreateItemHandler {
+    pub fn new(item_repo: Arc<dyn ItemRepository + Send + Sync>) -> CreateItemHandler {
         CreateItemHandler { item_repo }
     }
 }
 
 #[async_trait]
-impl Command<CreateItem, Result<String, ()>> for CreateItemHandler {
-    async fn handle(&self, cmd: CreateItem) -> Result<String, ()> {
+impl Command<CreateItem, Result<String, ItemRepositoryError>> for CreateItemHandler {
+    async fn handle(&self, cmd: CreateItem) -> Result<String, ItemRepositoryError> {
         let id = Uuid::new_v4();
         let item = Item::new(
             id.to_string(),
@@ -50,7 +55,7 @@ impl Command<CreateItem, Result<String, ()>> for CreateItemHandler {
             cmd.price,
             cmd.image_url,
         );
-        self.item_repo.save(item).await.unwrap();
+        self.item_repo.save(item).await?;
         Ok(id.to_string())
     }
 }
@@ -99,7 +104,7 @@ mod tests {
             "image_url".to_string(),
         );
         let item_store = Arc::new(Mutex::new(HashMap::<String, Item>::new()));
-        let item_repo = Box::new(InMemoryItemRepository::new(item_store));
+        let item_repo = Arc::new(InMemoryItemRepository::new(item_store));
         let handler = CreateItemHandler::new(item_repo);
 
         let result = handler.handle(cmd).await;

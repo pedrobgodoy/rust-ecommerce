@@ -7,4 +7,10 @@ createdb:
 dropdb:
 	docker compose exec -it db psql -U postgres -c "DROP DATABASE catalog"
 
+build:
+	cargo build --release
+
+run\:prod: build
+	./target/release/api-01
+
 .PHONY: rundb createdb dropdb

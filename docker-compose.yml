@@ -6,3 +6,12 @@ services:
       POSTGRES_PASSWORD: example
     ports:
       - 5432:5432
+
+  k6:
+    image: loadimpact/k6:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "6565:6565"
+    volumes:
+      - ./k6:/k6
