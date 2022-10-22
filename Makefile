@@ -13,6 +13,9 @@ migrate\:apply:
 migrate\:new:
 	cd ./db && npx prisma migrate dev
 
+resetdb:
+	cd ./db && npx prisma migrate reset
+
 build:
 	cargo build --release
 
