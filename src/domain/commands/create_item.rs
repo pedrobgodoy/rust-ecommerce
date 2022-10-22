@@ -62,38 +62,13 @@ impl Command<CreateItem, Result<String, ItemRepositoryError>> for CreateItemHand
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
+    use std::future;
 
     use bigdecimal::{BigDecimal, FromPrimitive};
 
-    use crate::{
-        domain::{commands::Command, entities::Item},
-        infra::repositories::InMemoryItemRepository,
-    };
+    use crate::domain::repositories::MockItemRepository;
 
-    use super::{CreateItem, CreateItemHandler};
-
-    #[test]
-    fn it_should_create_command() {
-        let expected = CreateItem {
-            name: "name".to_string(),
-            description: "description".to_string(),
-            price: BigDecimal::from_f32(1.0).unwrap(),
-            image_url: "image_url".to_string(),
-        };
-
-        let cmd = CreateItem::new(
-            expected.name.clone(),
-            expected.description.clone(),
-            expected.price.clone(),
-            expected.image_url.clone(),
-        );
-
-        assert_eq!(expected, cmd)
-    }
+    use super::*;
 
     #[tokio::test]
     async fn it_should_handle_command() {
@@ -103,9 +78,13 @@ mod tests {
             BigDecimal::from_f32(1.0).unwrap(),
             "image_url".to_string(),
         );
-        let item_store = Arc::new(Mutex::new(HashMap::<String, Item>::new()));
-        let item_repo = Arc::new(InMemoryItemRepository::new(item_store));
-        let handler = CreateItemHandler::new(item_repo);
+        let mut item_repo_mock = MockItemRepository::new();
+        item_repo_mock
+            .expect_save()
+            .times(1)
+            .returning(|_| Box::pin(future::ready(Ok(()))));
+
+        let handler = CreateItemHandler::new(Arc::new(item_repo_mock));
 
         let result = handler.handle(cmd).await;
 

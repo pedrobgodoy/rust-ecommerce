@@ -1,8 +1,3 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
-
 use async_trait::async_trait;
 use sqlx::{Postgres, Row};
 
@@ -10,30 +5,6 @@ use crate::domain::{
     entities::Item,
     repositories::{ItemRepository, ItemRepositoryError},
 };
-
-pub struct InMemoryItemRepository {
-    items_store: Arc<Mutex<HashMap<String, Item>>>,
-}
-
-impl InMemoryItemRepository {
-    pub fn new(items_store: Arc<Mutex<HashMap<String, Item>>>) -> Self {
-        InMemoryItemRepository { items_store }
-    }
-}
-
-#[async_trait]
-impl ItemRepository for InMemoryItemRepository {
-    async fn save(&self, item: Item) -> Result<(), ItemRepositoryError> {
-        let mut items = self.items_store.lock().unwrap();
-        items.insert(item.id.clone(), item);
-        Ok(())
-    }
-    async fn find_by_id(&self, id: String) -> Result<Item, ItemRepositoryError> {
-        let items = self.items_store.lock().unwrap();
-        let item = items.get(&id).unwrap();
-        Ok(item.clone())
-    }
-}
 
 pub struct SqlxItemRepository {
     pool: sqlx::Pool<Postgres>,

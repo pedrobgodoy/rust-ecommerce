@@ -37,48 +37,42 @@ impl Query<GetItem, Result<Item, ItemRepositoryError>> for GetItemHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
+    use std::{future, sync::Arc};
 
     use bigdecimal::{BigDecimal, FromPrimitive};
+    use mockall::predicate::*;
 
-    use crate::{
-        domain::{entities::Item, queries::Query, repositories::ItemRepository},
-        infra::repositories::InMemoryItemRepository,
-    };
+    use crate::domain::repositories::MockItemRepository;
 
-    use super::{GetItem, GetItemHandler};
+    use super::*;
 
     #[tokio::test]
     async fn it_should_get_item() {
-        let item_store = Arc::new(Mutex::new(HashMap::<String, Item>::new()));
-        let item_repo = Box::new(InMemoryItemRepository::new(Arc::clone(&item_store)));
-        let handler = GetItemHandler::new(Arc::new(InMemoryItemRepository::new(Arc::clone(
-            &item_store,
-        ))));
-        let id = "id".to_string();
-        let name = "name".to_string();
-        let description = "description".to_string();
-        let price = BigDecimal::from_f32(1.0).unwrap().clone();
-        let image_url = "image_url".to_string();
-        let item = Item::new(
-            id.clone(),
-            name.clone(),
-            description.clone(),
-            price.clone(),
-            image_url.clone(),
-        );
-        item_repo.save(item).await.unwrap();
+        let mut item_repo_mock = MockItemRepository::new();
 
-        let query = GetItem::new(id.clone());
+        let item = Item::new(
+            "id".to_string(),
+            "name".to_string(),
+            "description".to_string(),
+            BigDecimal::from_f32(1.0).unwrap().clone(),
+            "image_url".to_string(),
+        );
+        let item_clone = item.clone();
+
+        item_repo_mock
+            .expect_find_by_id()
+            .with(eq(item.id.clone()))
+            .times(1)
+            .returning(move |_| Box::pin(future::ready(Ok(item_clone.clone()))));
+
+        let handler = GetItemHandler::new(Arc::new(item_repo_mock));
+        let query = GetItem::new(item.id.clone());
         let result = handler.handle(query).await.unwrap();
 
-        assert_eq!(result.id, id);
-        assert_eq!(result.name, name);
-        assert_eq!(result.description, description);
-        assert_eq!(result.price, price);
-        assert_eq!(result.image_url, image_url);
+        assert_eq!(result.id, item.id.clone());
+        assert_eq!(result.name, item.name.clone());
+        assert_eq!(result.description, item.description.clone());
+        assert_eq!(result.price, item.price.clone());
+        assert_eq!(result.image_url, item.image_url.clone());
     }
 }
