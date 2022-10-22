@@ -3,19 +3,16 @@ use std::sync::Arc;
 use actix_web::{
     error, get,
     http::{header::ContentType, StatusCode},
-    post, web, App, HttpResponse, HttpServer, Responder,
+    post, web, App, HttpResponse, HttpServer,
 };
 use bigdecimal::{BigDecimal, FromPrimitive};
 use derive_more::{Display, Error};
 use serde::Deserialize;
 
-use crate::{
-    domain::{
-        commands::{self, Command},
-        queries::Query,
-        service::ApplicationService,
-    },
-    infra,
+use crate::domain::{
+    commands::{self, Command},
+    queries::Query,
+    service::ApplicationService,
 };
 
 #[derive(Deserialize)]
@@ -30,12 +27,6 @@ struct CreateItemInput {
 enum MyError {
     #[display(fmt = "internal error")]
     InternalError,
-
-    #[display(fmt = "bad request")]
-    BadClientData,
-
-    #[display(fmt = "timeout")]
-    Timeout,
 }
 
 impl error::ResponseError for MyError {
@@ -48,8 +39,6 @@ impl error::ResponseError for MyError {
     fn status_code(&self) -> StatusCode {
         match *self {
             MyError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
-            MyError::BadClientData => StatusCode::BAD_REQUEST,
-            MyError::Timeout => StatusCode::GATEWAY_TIMEOUT,
         }
     }
 }
@@ -68,7 +57,10 @@ async fn create_item(
     let result = app_service.create_item.handle(create_item_cmd).await;
     match result {
         Ok(_) => Ok("OK"),
-        Err(_) => Err(MyError::InternalError),
+        Err(_) => {
+            println!("Error ${:?}", result);
+            Err(MyError::InternalError)
+        }
     }
 }
 
@@ -76,29 +68,27 @@ async fn create_item(
 async fn get_item_by_id(
     path: web::Path<String>,
     app_service: web::Data<ApplicationService>,
-) -> impl Responder {
+) -> Result<String, MyError> {
     let id = path.into_inner();
     let query = crate::domain::queries::GetItem::new(id);
-    let items = app_service.get_item.handle(query).await;
-    format!("{:?}", items)
+    let result = app_service.get_item.handle(query).await;
+    match result {
+        Ok(_) => Ok(format!("{:?}", result)),
+        Err(_) => {
+            println!("Error ${:?}", result);
+            Err(MyError::InternalError)
+        }
+    }
 }
 
-pub async fn setup() -> std::io::Result<()> {
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(500)
-        .connect("postgres://postgres:example@localhost:5432/catalog")
-        .await
-        .unwrap();
-
+pub async fn setup(app_service: Arc<ApplicationService>) -> std::io::Result<()> {
     println!("Starting server at http://0.0.0.0:8080");
 
     HttpServer::new(move || {
-        let item_repo = Arc::new(infra::repositories::SqlxItemRepository::new(pool.clone()));
-        let application_service = Arc::new(ApplicationService::new(item_repo));
         App::new()
             .service(get_item_by_id)
             .service(create_item)
-            .app_data(web::Data::from(application_service))
+            .app_data(web::Data::from(Arc::clone(&app_service)))
     })
     .bind(("0.0.0.0", 8080))?
     .run()
