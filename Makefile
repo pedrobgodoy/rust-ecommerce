@@ -7,8 +7,17 @@ createdb:
 dropdb:
 	docker compose exec -it db psql -U postgres -c "DROP DATABASE catalog"
 
+migrate\:apply:
+	cd ./db && npx prisma migrate deploy
+
+migrate\:new:
+	cd ./db && npx prisma migrate dev
+
 build:
 	cargo build --release
+
+run\:dev:
+	cargo watch -x run
 
 run\:prod: build
 	./target/release/api-01
