@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use dotenvy::dotenv;
+use std::{env, sync::Arc};
 
 use domain::service::ApplicationService;
 use infra::http;
@@ -8,9 +9,12 @@ mod infra;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+    let database_url = env::var_os("DATABASE_URL").expect("DATABASE_URL must be set");
+
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(10)
-        .connect("postgres://postgres:example@localhost:5432/catalog")
+        .connect(database_url.to_str().unwrap())
         .await
         .unwrap();
 
