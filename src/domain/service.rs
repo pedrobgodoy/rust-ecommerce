@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::infra::broker::Broker;
+
 use super::{commands, queries, repositories::ItemRepository};
 
 pub struct ApplicationService {
@@ -11,9 +13,12 @@ pub struct ApplicationService {
 }
 
 impl ApplicationService {
-    pub fn new(item_repo: Arc<dyn ItemRepository + Send + Sync>) -> Self {
+    pub fn new(
+        item_repo: Arc<dyn ItemRepository + Send + Sync>,
+        broker: Arc<dyn Broker + Send + Sync>,
+    ) -> Self {
         Self {
-            create_item: commands::CreateItemHandler::new(item_repo.clone()),
+            create_item: commands::CreateItemHandler::new(item_repo.clone(), broker.clone()),
             get_item: queries::GetItemHandler::new(item_repo.clone()),
         }
     }

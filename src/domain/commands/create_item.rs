@@ -5,9 +5,13 @@ use bigdecimal::BigDecimal;
 use uuid::Uuid;
 
 use super::Command;
-use crate::domain::{
-    entities::Item,
-    repositories::{ItemRepository, ItemRepositoryError},
+use crate::{
+    domain::{
+        entities::Item,
+        events::item::ItemCreated,
+        repositories::{ItemRepository, ItemRepositoryError},
+    },
+    infra::broker::Broker,
 };
 
 #[derive(Debug, PartialEq)]
@@ -36,11 +40,15 @@ impl CreateItem {
 
 pub struct CreateItemHandler {
     item_repo: Arc<dyn ItemRepository + Send + Sync>,
+    broker: Arc<dyn Broker + Send + Sync>,
 }
 
 impl CreateItemHandler {
-    pub fn new(item_repo: Arc<dyn ItemRepository + Send + Sync>) -> CreateItemHandler {
-        CreateItemHandler { item_repo }
+    pub fn new(
+        item_repo: Arc<dyn ItemRepository + Send + Sync>,
+        broker: Arc<dyn Broker + Send + Sync>,
+    ) -> CreateItemHandler {
+        CreateItemHandler { item_repo, broker }
     }
 }
 
@@ -56,6 +64,12 @@ impl Command<CreateItem, Result<String, ItemRepositoryError>> for CreateItemHand
             cmd.image_url,
         );
         self.item_repo.save(item).await?;
+        let event = Box::new(ItemCreated::new(
+            id.to_string(),
+            "teste payload".to_string(),
+            1,
+        ));
+        self.broker.publish(event).await.unwrap();
         Ok(id.to_string())
     }
 }
@@ -83,8 +97,9 @@ mod tests {
             .expect_save()
             .times(1)
             .returning(|_| Box::pin(future::ready(Ok(()))));
+        let broker_mock = crate::infra::broker::MockBroker::new();
 
-        let handler = CreateItemHandler::new(Arc::new(item_repo_mock));
+        let handler = CreateItemHandler::new(Arc::new(item_repo_mock), Arc::new(broker_mock));
 
         let result = handler.handle(cmd).await;
 
