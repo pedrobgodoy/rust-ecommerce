@@ -21,5 +21,12 @@ async fn main() {
     let item_repo = Arc::new(infra::repositories::SqlxItemRepository::new(pool.clone()));
     let app_service = Arc::new(ApplicationService::new(item_repo));
 
-    http::setup(app_service).await.unwrap();
+    let options = http::HttpOptions {
+        host: env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
+        port: env::var("PORT")
+            .unwrap_or_else(|_| "8080".to_string())
+            .parse::<u16>()
+            .unwrap(),
+    };
+    http::setup(app_service, options).await.unwrap();
 }

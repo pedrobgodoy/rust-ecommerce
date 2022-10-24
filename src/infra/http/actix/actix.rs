@@ -15,6 +15,11 @@ use crate::domain::{
     service::ApplicationService,
 };
 
+pub struct HttpOptions {
+    pub host: String,
+    pub port: u16,
+}
+
 #[derive(Deserialize)]
 struct CreateItemInput {
     name: String,
@@ -24,12 +29,12 @@ struct CreateItemInput {
 }
 
 #[derive(Debug, Display, Error)]
-enum MyError {
+enum HttpError {
     #[display(fmt = "internal error")]
     InternalError,
 }
 
-impl error::ResponseError for MyError {
+impl error::ResponseError for HttpError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code())
             .insert_header(ContentType::html())
@@ -38,7 +43,7 @@ impl error::ResponseError for MyError {
 
     fn status_code(&self) -> StatusCode {
         match *self {
-            MyError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
+            HttpError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -47,7 +52,7 @@ impl error::ResponseError for MyError {
 async fn create_item(
     input: web::Json<CreateItemInput>,
     app_service: web::Data<ApplicationService>,
-) -> Result<&'static str, MyError> {
+) -> Result<&'static str, HttpError> {
     let create_item_cmd = commands::CreateItem::new(
         input.name.clone(),
         input.description.clone(),
@@ -59,7 +64,7 @@ async fn create_item(
         Ok(_) => Ok("OK"),
         Err(_) => {
             println!("Error ${:?}", result);
-            Err(MyError::InternalError)
+            Err(HttpError::InternalError)
         }
     }
 }
@@ -68,7 +73,7 @@ async fn create_item(
 async fn get_item_by_id(
     path: web::Path<String>,
     app_service: web::Data<ApplicationService>,
-) -> Result<String, MyError> {
+) -> Result<String, HttpError> {
     let id = path.into_inner();
     let query = crate::domain::queries::GetItem::new(id);
     let result = app_service.get_item.handle(query).await;
@@ -76,13 +81,16 @@ async fn get_item_by_id(
         Ok(_) => Ok(format!("{:?}", result)),
         Err(_) => {
             println!("Error ${:?}", result);
-            Err(MyError::InternalError)
+            Err(HttpError::InternalError)
         }
     }
 }
 
-pub async fn setup(app_service: Arc<ApplicationService>) -> std::io::Result<()> {
-    println!("Starting server at http://0.0.0.0:8080");
+pub async fn setup(
+    app_service: Arc<ApplicationService>,
+    options: HttpOptions,
+) -> std::io::Result<()> {
+    println!("Starting HTTP server at {}:{}", options.host, options.port);
 
     HttpServer::new(move || {
         App::new()
