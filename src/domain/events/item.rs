@@ -1,3 +1,5 @@
+use crate::domain::entities::Item;
+
 use super::event::Event;
 
 pub struct ItemCreated {
@@ -7,10 +9,10 @@ pub struct ItemCreated {
 }
 
 impl ItemCreated {
-    pub fn new(id: String, payload: String, version: u16) -> ItemCreated {
+    pub fn new(id: String, item: &Item, version: u16) -> ItemCreated {
         ItemCreated {
             id,
-            payload,
+            payload: serde_json::to_string(item).unwrap(),
             version,
         }
     }

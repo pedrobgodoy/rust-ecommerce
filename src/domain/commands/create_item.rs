@@ -63,12 +63,8 @@ impl Command<CreateItem, Result<String, ItemRepositoryError>> for CreateItemHand
             cmd.price,
             cmd.image_url,
         );
-        self.item_repo.save(item).await?;
-        let event = Box::new(ItemCreated::new(
-            id.to_string(),
-            "teste payload".to_string(),
-            1,
-        ));
+        self.item_repo.save(item.clone()).await?;
+        let event = Box::new(ItemCreated::new(id.to_string(), &item.clone(), 1));
         self.broker.publish(event).await.unwrap();
         Ok(id.to_string())
     }
