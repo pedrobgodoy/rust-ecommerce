@@ -6,6 +6,7 @@ use mockall::{automock, predicate::*};
 
 #[derive(Debug)]
 pub enum ItemRepositoryError {
+    NotFound,
     Generic(String),
 }
 

@@ -49,6 +49,7 @@ impl ItemRepository for SqlxItemRepository {
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
             }),
+            Err(sqlx::Error::RowNotFound) => Err(ItemRepositoryError::NotFound),
             Err(e) => Err(ItemRepositoryError::Generic(e.to_string())),
         }
     }

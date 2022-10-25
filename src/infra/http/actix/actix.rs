@@ -12,6 +12,7 @@ use serde::Deserialize;
 use crate::domain::{
     commands::{self, Command},
     queries::Query,
+    repositories::ItemRepositoryError,
     service::ApplicationService,
 };
 
@@ -32,18 +33,22 @@ struct CreateItemInput {
 enum HttpError {
     #[display(fmt = "internal error")]
     InternalError,
+
+    #[display(fmt = "{{\"message\":\"Not Found\"}}")]
+    NotFound,
 }
 
 impl error::ResponseError for HttpError {
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code())
-            .insert_header(ContentType::html())
+            .insert_header(ContentType::json())
             .body(self.to_string())
     }
 
     fn status_code(&self) -> StatusCode {
         match *self {
             HttpError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
+            HttpError::NotFound => StatusCode::NOT_FOUND,
         }
     }
 }
@@ -61,7 +66,8 @@ async fn create_item(
     );
     let result = app_service.create_item.handle(create_item_cmd).await;
     match result {
-        Ok(_) => Ok("OK"),
+        Ok(_) => Ok(""),
+        Err(ItemRepositoryError::NotFound) => Err(HttpError::NotFound),
         Err(_) => {
             println!("Error ${:?}", result);
             Err(HttpError::InternalError)
@@ -73,12 +79,15 @@ async fn create_item(
 async fn get_item_by_id(
     path: web::Path<String>,
     app_service: web::Data<ApplicationService>,
-) -> Result<String, HttpError> {
+) -> Result<HttpResponse, HttpError> {
     let id = path.into_inner();
     let query = crate::domain::queries::GetItem::new(id);
     let result = app_service.get_item.handle(query).await;
     match result {
-        Ok(_) => Ok(format!("{:?}", result)),
+        Ok(item) => Ok(HttpResponse::Ok()
+            .content_type(ContentType::json())
+            .body(serde_json::to_string(&item).unwrap())),
+        Err(ItemRepositoryError::NotFound) => Err(HttpError::NotFound),
         Err(_) => {
             println!("Error ${:?}", result);
             Err(HttpError::InternalError)
