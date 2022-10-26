@@ -27,3 +27,6 @@ run-prod: build
 
 test:
   cargo test
+
+test-stress:
+  docker compose run k6 run /k6/tests/create_item.ts

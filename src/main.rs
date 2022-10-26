@@ -18,7 +18,7 @@ async fn main() {
         .unwrap();
 
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(95)
         .connect(database_url.as_str())
         .await
         .unwrap();
