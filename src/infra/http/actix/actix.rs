@@ -1,25 +1,18 @@
 use std::sync::Arc;
 
-use actix_web::{
-    error, get,
-    http::{header::ContentType, StatusCode},
-    post, web, App, HttpResponse, HttpServer,
-};
+use actix_web::{get, http::header::ContentType, post, web, App, HttpResponse, HttpServer};
 use bigdecimal::{BigDecimal, FromPrimitive};
-use derive_more::{Display, Error};
 use serde::Deserialize;
 
-use crate::domain::{
-    commands::{self, Command},
-    queries::Query,
-    repositories::ItemRepositoryError,
-    service::ApplicationService,
+use crate::{
+    domain::{
+        commands::{self, Command},
+        queries::Query,
+        repositories::ItemRepositoryError,
+        service::ApplicationService,
+    },
+    infra::http::http::{HttpError, HttpOptions},
 };
-
-pub struct HttpOptions {
-    pub host: String,
-    pub port: u16,
-}
 
 #[derive(Deserialize)]
 struct CreateItemInput {
@@ -27,30 +20,6 @@ struct CreateItemInput {
     description: String,
     price: f32,
     image_url: String,
-}
-
-#[derive(Debug, Display, Error)]
-enum HttpError {
-    #[display(fmt = "internal error")]
-    InternalError,
-
-    #[display(fmt = "{{\"message\":\"Not Found\"}}")]
-    NotFound,
-}
-
-impl error::ResponseError for HttpError {
-    fn error_response(&self) -> HttpResponse {
-        HttpResponse::build(self.status_code())
-            .insert_header(ContentType::json())
-            .body(self.to_string())
-    }
-
-    fn status_code(&self) -> StatusCode {
-        match *self {
-            HttpError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
-            HttpError::NotFound => StatusCode::NOT_FOUND,
-        }
-    }
 }
 
 #[post("/items")]

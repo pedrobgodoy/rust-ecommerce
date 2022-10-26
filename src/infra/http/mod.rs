@@ -1,4 +1,5 @@
 mod actix;
+pub(crate) mod http;
 
 pub use actix::setup;
-pub use actix::HttpOptions;
+pub use http::HttpOptions;
