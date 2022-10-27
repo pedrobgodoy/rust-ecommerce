@@ -21,13 +21,11 @@ pub struct AMQPBroker {
 }
 
 impl AMQPBroker {
-    pub async fn new() -> Self {
-        let connection = lapin::Connection::connect(
-            "amqp://guest:guest@localhost:5672/%2f",
-            lapin::ConnectionProperties::default(),
-        )
-        .await
-        .unwrap();
+    pub async fn new(address: String) -> Self {
+        let connection =
+            lapin::Connection::connect(address.as_str(), lapin::ConnectionProperties::default())
+                .await
+                .unwrap();
         let channel = connection.create_channel().await.unwrap();
         channel
             .queue_declare(

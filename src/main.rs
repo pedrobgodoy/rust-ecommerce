@@ -16,6 +16,7 @@ async fn main() {
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap();
+    let broker_url = env::var("AMQP_URL").expect("AMQP_URL must be set");
 
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(95)
@@ -24,7 +25,7 @@ async fn main() {
         .unwrap();
 
     let item_repo = Arc::new(infra::repositories::SqlxItemRepository::new(pool.clone()));
-    let broker = Arc::new(infra::broker::AMQPBroker::new().await);
+    let broker = Arc::new(infra::broker::AMQPBroker::new(broker_url).await);
     let app_service = Arc::new(ApplicationService::new(item_repo, broker));
 
     let options = http::HttpOptions { host, port };
