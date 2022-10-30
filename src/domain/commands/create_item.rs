@@ -93,7 +93,11 @@ mod tests {
             .expect_save()
             .times(1)
             .returning(|_| Box::pin(future::ready(Ok(()))));
-        let broker_mock = crate::infra::broker::MockBroker::new();
+        let mut broker_mock = crate::infra::broker::MockBroker::new();
+        broker_mock
+            .expect_publish()
+            .times(1)
+            .returning(|_| Box::pin(future::ready(Ok(()))));
 
         let handler = CreateItemHandler::new(Arc::new(item_repo_mock), Arc::new(broker_mock));
 
