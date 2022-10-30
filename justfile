@@ -30,3 +30,9 @@ test:
 
 test-stress:
   docker compose run k6 run /k6/tests/create_item.ts
+
+build-image:
+  docker build -t pedrobgodoy/api-01 .
+
+push-image: build-image
+  docker push pedrobgodoy/api-01
